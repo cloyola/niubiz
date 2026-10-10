@@ -34,11 +34,14 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
         
         $params_decoded = base64_decode(Tools::getValue('nbzheader'));
         $params = explode("|", $params_decoded);
-        
+
+        if (count($params) < 2) {
+            Tools::redirect($this->context->link->getPageLink('order', true));
+        }
 
         $module_name = $this->module->displayName;
-        
-        $id_cart = $params[0];
+
+        $id_cart = (int) $params[0];
         $secure_key = $params[1];
         $transactionToken = Tools::getValue('transactionToken');
         $currency_id = (int) Context::getContext()->currency->id;
@@ -57,7 +60,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
             || $secure_key != $customer->secure_key
             || !$this->module->active) {
             
-            Tools::redirect('index.php?controller=order&step=1');
+            Tools::redirect($this->context->link->getPageLink('order', true));
         }
 
         $authorized = false;
@@ -74,27 +77,36 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
         }
 
         if (!Validate::isLoadedObject($customer)) {
-            Tools::redirect('index.php?controller=order&step=1');
+            Tools::redirect($this->context->link->getPageLink('order', true));
         }
 
 
-        
-
         // NIUBIZ VALIDATION
-        $authNiubizResponse = $this->authorization($_COOKIE["niubizkey-$cart->id"], $total, $transactionToken, $cart->id, $cart->id_currency);
+        $cookieName = 'niubizkey-'.(int) $cart->id;
+        if (empty($_COOKIE[$cookieName])) {
+            $message = 'Error en modulo de pago: la sesión de pago expiró, intente nuevamente';
+            Tools::redirect($this->context->link->getModuleLink($this->module->name, 'validation', ['nbz_error' => base64_encode($message)]));
+        }
+
+        $authNiubizResponse = $this->authorization($_COOKIE[$cookieName], $total, $transactionToken, $cart->id, $cart->id_currency);
+        if (!is_array($authNiubizResponse)) {
+            $authNiubizResponse = [];
+        }
 
         $dataInput = isset($authNiubizResponse['dataMap']) ? 'dataMap' : 'data';
 
         $sal = [];
 
-        if (isset($_POST['transactionToken']) && isset($_POST['url'])) {
+        if (isset($_POST['transactionToken']) && isset($_POST['url']) && $this->isSafePagoEfectivoUrl($_POST['url'])) {
             $ps_os_payment = Configuration::get('NBZ_STATE_WAITING_CAPTURE');
             $message = "Esperando confirmación de PagoEfectivo";
         } else if (isset($authNiubizResponse[$dataInput]) && $authNiubizResponse[$dataInput]['ACTION_CODE'] == "000") {
             $ps_os_payment = Configuration::get('PS_OS_PAYMENT');
             $message = "Pago válido";
         } else {
-            $message = 'Error '.$authNiubizResponse['errorCode'].': '.$authNiubizResponse['errorMessage'];
+            $errorCode = isset($authNiubizResponse['errorCode']) ? $authNiubizResponse['errorCode'] : '';
+            $errorMessage = isset($authNiubizResponse['errorMessage']) ? $authNiubizResponse['errorMessage'] : 'Sin respuesta de Niubiz';
+            $message = 'Error '.$errorCode.': '.$errorMessage;
             Tools::redirect(Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['nbz_error' => base64_encode($message)]));
         } 
 
@@ -108,52 +120,52 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
 
         if ($order_id && ($secure_key == $customer->secure_key)) {
             
-            unset($_COOKIE["niubizkey-$cart->id"]);
+            unset($_COOKIE[$cookieName]);
 
             if ($ps_os_payment == Configuration::get('NBZ_STATE_WAITING_CAPTURE')) {
                 $sal['data']['id_order'] = (int)$order_id;
                 $urlPagoEfectivo = Tools::getValue('url');
                 $explodeUrlPagoEfectivo = explode('/', $urlPagoEfectivo);
-                $operationNumber = strtolower(substr($explodeUrlPagoEfectivo[3], 0, 36));
-    
+                $operationNumber = isset($explodeUrlPagoEfectivo[3]) ? strtolower(substr($explodeUrlPagoEfectivo[3], 0, 36)) : '';
+
                 Db::getInstance()->insert('niubiz_pagoefectivo', [
                     'id_order' => (int)$order_id,
                     'id_cart' => (int)$cart->id,
                     'id_customer' => (int)$customer->id,
-                    'operationNumber' => $operationNumber,
-                    'channel' => Tools::getValue('channel'),
-                    'cip' => Tools::getValue('transactionToken'),
-                    'customerEmail' => Tools::getValue('customerEmail'),
-                    'url' => Tools::getValue('url'),
+                    'operationNumber' => pSQL($operationNumber),
+                    'channel' => pSQL(Tools::getValue('channel')),
+                    'cip' => pSQL(Tools::getValue('transactionToken')),
+                    'customerEmail' => pSQL(Tools::getValue('customerEmail')),
+                    'url' => pSQL($urlPagoEfectivo),
                 ]);
-                Tools::redirect($_POST['url']);
+                Tools::redirect($urlPagoEfectivo);
             } else {
                 $sal['data']['id_order'] = (int)$order_id;
                 $sal['data']['id_cart'] = (int)$cart->id;
                 $sal['data']['id_customer'] = (int)$customer->id;
-                $sal['data']['pan'] = $authNiubizResponse[$dataInput]['CARD'];;
-                $sal['data']['numorden'] = $authNiubizResponse[$dataInput]['TRACE_NUMBER'];
-                $sal['data']['dsc_cod_accion'] = $authNiubizResponse[$dataInput]['ACTION_DESCRIPTION'];
-                $sal['data']['dsc_eci'] = pSQL($authNiubizResponse[$dataInput]['BRAND']);
+                $data = $authNiubizResponse[$dataInput];
+                $sal['data']['pan'] = pSQL(isset($data['CARD']) ? $data['CARD'] : '');
+                $sal['data']['numorden'] = pSQL(isset($data['TRACE_NUMBER']) ? $data['TRACE_NUMBER'] : '');
+                $sal['data']['dsc_cod_accion'] = pSQL(isset($data['ACTION_DESCRIPTION']) ? $data['ACTION_DESCRIPTION'] : '');
+                $sal['data']['dsc_eci'] = pSQL(isset($data['BRAND']) ? $data['BRAND'] : '');
                 $sal['data']['transactionToken'] = pSQL($transactionToken);
-                $sal['data']['aliasName'] = pSQL($authNiubizResponse[$dataInput]['SIGNATURE']);
+                $sal['data']['aliasName'] = pSQL(isset($data['SIGNATURE']) ? $data['SIGNATURE'] : '');
 
                 Db::getInstance()->insert('niubiz_log', $sal['data']);
     
                 $rdc = 'index.php?controller=order-confirmation&id_cart='.(int)$cart->id.'&id_module='.(int)$this->module->id;
-    
-                Tools::redirect($rdc.'&id_order='.$this->module->currentOrder.'&key='.$secure_key);
+
+                Tools::redirect($rdc.'&id_order='.(int)$this->module->currentOrder.'&key='.urlencode($secure_key));
             }
             
         } else {
-            die("else");
-            $this->errors[] = $this->module->l('An error occured. Please contact the merchant to have more informations');
+            $this->errors[] = $this->module->trans('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Return');
 
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
         }
     }
 
-    function authorization($key, $amount, $transactionToken, $purchaseNumber, $currencyId)
+    public function authorization($key, $amount, $transactionToken, $purchaseNumber, $currencyId)
     {
         $currency = new Currency($currencyId);
 
@@ -172,7 +184,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
             "channel" => "web",
             "countable" => true,
             "order" => [
-                "amount" => $amount,
+                "amount" => (float) $amount,
                 "tokenId" => $transactionToken,
                 "purchaseNumber" => $purchaseNumber,
                 "currency" => $currency->iso_code,
@@ -184,14 +196,31 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->module->authorization_api);
-        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_HEADER, FALSE);
+        curl_setopt($ch, CURLOPT_HEADER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        curl_setopt($ch, CURLOPT_POST, TRUE);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_body));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
-        return json_decode($response, true);
+        if ($response === false) {
+            PrestaShopLogger::addLog('NIUBIZ :: authorization API error: '.curl_error($ch), 3);
+        }
+        curl_close($ch);
+
+        return json_decode((string) $response, true);
+    }
+
+    /**
+     * The PagoEfectivo redirect URL comes from the POST sent by the Niubiz checkout: only follow https URLs.
+     */
+    private function isSafePagoEfectivoUrl($url)
+    {
+        return is_string($url)
+            && filter_var($url, FILTER_VALIDATE_URL) !== false
+            && strtolower((string) parse_url($url, PHP_URL_SCHEME)) === 'https';
     }
 }

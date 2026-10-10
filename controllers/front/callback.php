@@ -33,9 +33,13 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
         $input = file_get_contents("php://input");
 
         if ((bool) Configuration::get('NBZ_DEBUG')) {
-            $fp1 = fopen(dirname(__FILE__). '/../../logs/callback.txt', 'w');
-            fwrite($fp1, $input);
-            fclose($fp1);
+            $logDir = dirname(__FILE__).'/../../logs';
+            if (!is_dir($logDir)) {
+                $logDir = _PS_ROOT_DIR_.'/var/logs';
+            }
+            if (is_dir($logDir) && is_writable($logDir)) {
+                file_put_contents($logDir.'/niubiz_callback.txt', $input);
+            }
         }
 
         if ($input === '') {
@@ -63,13 +67,14 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
                     $history = new OrderHistory();
                     $history->id_order = $id_order;
                     $history->changeIdOrderState((int)$ps_os_payment, (int)$id_order);
+                    $history->add();
 
                     $this->response(200, 'Order updated successfully.', $event_json);
                 } else {
-                    $this->response(422, $this->trans("The payment sent doen't match with the payment generated in the system.", [], 'Modules.Niubiz.Callback'));
+                    $this->response(422, $this->module->trans("The payment sent doen't match with the payment generated in the system.", [], 'Modules.Niubiz.Callback'));
                 }
             } else {
-                $this->response(422, $this->trans("It doesn't contain the correct structure JSON.", [], 'Modules.Niubiz.Callback'));
+                $this->response(422, $this->module->trans("It doesn't contain the correct structure JSON.", [], 'Modules.Niubiz.Callback'));
             }
         }
     }
@@ -81,11 +86,11 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
      * @return bool
      */
     private function getCipIsValid($response) {
-        $queryPagoEfectivo = "SELECT * FROM "._DB_PREFIX_."niubiz_pagoefectivo WHERE cip = '".$response['cip']."'";
+        $queryPagoEfectivo = "SELECT * FROM "._DB_PREFIX_."niubiz_pagoefectivo WHERE cip = '".pSQL($response['cip'])."'";
         $isValid = false;
 
         if ($rowPagoEfectivo = Db::getInstance()->getRow($queryPagoEfectivo)) {
-            $queryOrder = "SELECT COUNT(*) FROM "._DB_PREFIX_."orders WHERE id_order = '".$rowPagoEfectivo['id_order']."' AND total_paid_tax_incl = '".$response['amount']."'";
+            $queryOrder = "SELECT COUNT(*) FROM "._DB_PREFIX_."orders WHERE id_order = ".(int) $rowPagoEfectivo['id_order']." AND ABS(total_paid_tax_incl - ".(float) $response['amount'].") < 0.01";
 
             if ($rowOrder = Db::getInstance()->getValue($queryOrder)) {
                 $isValid = (bool) $rowOrder;
@@ -96,8 +101,8 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
     }
 
     private function getOrderIdByCIP($cip) {
-        $rowPagoEfectivo = Db::getInstance()->getRow("SELECT * FROM "._DB_PREFIX_."niubiz_pagoefectivo WHERE cip = '".$cip."'");
-        return (int)$rowPagoEfectivo['id_order'];
+        $rowPagoEfectivo = Db::getInstance()->getRow("SELECT * FROM "._DB_PREFIX_."niubiz_pagoefectivo WHERE cip = '".pSQL($cip)."'");
+        return $rowPagoEfectivo ? (int)$rowPagoEfectivo['id_order'] : 0;
     }
 
     private function response($code, $message, $payload = null) {

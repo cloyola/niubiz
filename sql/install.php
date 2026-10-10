@@ -33,7 +33,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.'niubiz_session (
     sessionkey VARCHAR(50),
     date_add timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id_token)
-) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8;';
+) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8mb4;';
 
 $sql[] = 'CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.'niubiz_log (
     id INT(11) NOT NULL AUTO_INCREMENT,
@@ -72,7 +72,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.'niubiz_log (
     ori_tarjeta VARCHAR(3),
     date_add TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY  (id)
-) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8;';
+) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8mb4;';
 
 $sql[] = 'CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.'niubiz_pagoefectivo (
     id INT(11) NOT NULL AUTO_INCREMENT,
@@ -83,10 +83,10 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.'niubiz_pagoefectivo (
     cip VARCHAR(36),
     channel VARCHAR(20),
     customerEmail VARCHAR(50),
-    url TEXT(50),
+    url TEXT,
     date_add timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
-) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8;';
+) ENGINE='._MYSQL_ENGINE_.' DEFAULT CHARSET=utf8mb4;';
 
 
 
@@ -95,3 +95,5 @@ foreach ($sql as $query) {
         return false;
     }
 }
+
+return true;

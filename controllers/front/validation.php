@@ -40,11 +40,29 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
         $cart = Context::getContext()->cart;
         $customer = Context::getContext()->customer;
 
+        if (!Validate::isLoadedObject($cart) || !Validate::isLoadedObject($customer)) {
+            Tools::redirect($this->context->link->getPageLink('order', true));
+        }
+
         $amount = number_format($cart->getOrderTotal(true, Cart::BOTH), 2, '.', '');
         $securityKey = $this->module->securityKey();
-        setcookie("niubizkey-".$cart->id, $securityKey);
+        $sessionToken = $securityKey ? $this->module->createToken($amount, $securityKey) : false;
 
-        $sessionToken = $this->module->createToken($amount, $securityKey);
+        if (!$securityKey || !$sessionToken) {
+            $this->context->smarty->assign(array(
+                'nbz_error' => $this->module->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Validation'),
+                'nbz_debug' => false,
+                'var' => array(),
+                'logo' => Configuration::get('NBZ_LOGO'),
+                'linkActionReturn' => '',
+                'nbz_dump' => '',
+            ));
+            $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
+            $this->errors[] = $this->module->trans('No se pudo iniciar el pago con Niubiz.', array(), 'Modules.Niubiz.Validation');
+            return;
+        }
+
+        $this->module->setSecurityCookie($cart->id, $securityKey);
         $userTokenId = $this->module->userTokenId();
 
         $session = array();
@@ -69,13 +87,17 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
         
         $params_encoded = base64_encode($cart->id.'|'.$customer->secure_key);
         
+        $linkActionReturn = $this->context->link->getModuleLink($this->module->name, 'return', ['nbzheader' => $params_encoded], true);
+
         $this->context->smarty->assign(array(
             'logo' => Configuration::get('NBZ_LOGO'),
             'nbz_error' => $nbz_error,
             'nbz_debug' => (bool) Configuration::get('NBZ_DEBUG'),
             'psVersion' => $this->module->psVersion,
             'var' => $variables,
-            'linkActionReturn' => $this->context->link->getModuleLink($this->module->name, 'return', ['nbzheader' => $params_encoded], true),
+            'linkActionReturn' => $linkActionReturn,
+            // Smarty 4 (PrestaShop 9) no longer allows arbitrary PHP functions as modifiers ({$var|print_r:true}).
+            'nbz_dump' => (bool) Configuration::get('NBZ_DEBUG') ? print_r($variables, true).'linkReturn='.$linkActionReturn : '',
         ));
 
         $this->setTemplate('module:niubiz/views/templates/front/validation.tpl');
