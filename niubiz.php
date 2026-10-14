@@ -168,12 +168,12 @@ class Niubiz extends PaymentModule
             return false;
         }
 
-        if (include(dirname(__FILE__).'/sql/install.php') === false) {
+        if (include(_PS_MODULE_DIR_ . 'niubiz/sql/install.php') === false) {
             return false;
         }
 
-        if (!is_dir(dirname(__FILE__).'/img')) {
-            @mkdir(dirname(__FILE__).'/img', 0755, true);
+        if (!is_dir(_PS_MODULE_DIR_ . 'niubiz/img')) {
+            @mkdir(_PS_MODULE_DIR_ . 'niubiz/img', 0755, true);
         }
 
         $link = new Link;
