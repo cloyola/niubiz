@@ -1,0 +1,210 @@
+From 3001b33d22be8069e8fcf36d8e392fe2698a9483 Mon Sep 17 00:00:00 2001
+From: niubiz-ps9 <noreply@example.com>
+Date: Mon, 19 Oct 2026 17:25:36 +0000
+Subject: [PATCH] 3.2.1: fix PHP 8 install ValueError and logo upload crash on
+ PS 8/9
+
+---
+ CHANGELOG.md              |   5 ++
+ config.xml                |   2 +-
+ niubiz.php                | 113 ++++++++++++++++++++++++++++----------
+ upgrade/upgrade-3.2.0.php |   4 +-
+ 4 files changed, 93 insertions(+), 31 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 14c9413..7226030 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,3 +1,8 @@
++## [3.2.1] - 2026-10-19
++- FIX: PHP 8 fatal on install: `include (path) === false` was parsed as `include ''` (ValueError: Path cannot be empty)
++- FIX: uploading the payment logo in the module configuration crashed the back office on PrestaShop 8/9 (FileNotFoundException: /tmp/phpXXXX does not exist) because the temporary upload was moved with `move_uploaded_file`. The image is now validated and re-encoded with `ImageManager`, the temp file is left to PHP, file names are random, only png/gif/jpg are accepted
++- FIX: saving the form no longer erases the logos of other languages, and a failed upload no longer skips saving the rest of the settings
++
+ ## [3.2.0] - 2026-10-09
+ PrestaShop 9 compatibility release (same code base still installs on PrestaShop 1.7.6+ / PHP 7.2+).
+ - IMP: `ps_versions_compliancy` 1.7.6.0 - 9.99.99; code linted on PHP 8.3 and written without syntax newer than PHP 7.2
+diff --git a/config.xml b/config.xml
+index 97f1669..874e3b7 100644
+--- a/config.xml
++++ b/config.xml
+@@ -2,7 +2,7 @@
+ <module>
+ 	<name>niubiz</name>
+ 	<displayName><![CDATA[Niubiz - Pagos con tarjeta de crédito y débito]]></displayName>
+-	<version><![CDATA[3.2.0]]></version>
++	<version><![CDATA[3.2.1]]></version>
+ 	<description><![CDATA[Realiza pagos con tu tarjeta de crédito y débito en Perú]]></description>
+ 	<author><![CDATA[Victor Castro]]></author>
+ 	<tab><![CDATA[payments_gateways]]></tab>
+diff --git a/niubiz.php b/niubiz.php
+index 21c130c..1e7c136 100644
+--- a/niubiz.php
++++ b/niubiz.php
+@@ -57,7 +57,7 @@ class Niubiz extends PaymentModule
+     {
+         $this->name = 'niubiz';
+         $this->tab = 'payments_gateways';
+-        $this->version = '3.2.0';
++        $this->version = '3.2.1';
+         $this->author = 'Victor Castro';
+         $this->need_instance = 0;
+         $this->controllers = array('validation', 'return', 'callback');
+@@ -168,12 +168,15 @@ class Niubiz extends PaymentModule
+             return false;
+         }
+ 
+-        if (include(_PS_MODULE_DIR_ . 'niubiz/sql/install.php') === false) {
++        // NB: `include (...) === false` is parsed as include((...) === false) -> include '' -> ValueError on PHP 8.
++        $installSql = $this->getLocalPath().'sql/install.php';
++        $sqlResult = include $installSql;
++        if ($sqlResult === false) {
+             return false;
+         }
+ 
+-        if (!is_dir(_PS_MODULE_DIR_ . 'niubiz/img')) {
+-            @mkdir(_PS_MODULE_DIR_ . 'niubiz/img', 0755, true);
++        if (!is_dir($this->getLocalPath().'img')) {
++            @mkdir($this->getLocalPath().'img', 0755, true);
+         }
+ 
+         $link = new Link;
+@@ -599,43 +602,95 @@ class Niubiz extends PaymentModule
+             Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO_SHOW', Tools::getValue('NBZ_PAYMENT_OPTION_LOGO_SHOW'));
+             Configuration::updateValue('NBZ_ENABLE_PAYMENTOPTION', Tools::getValue('NBZ_ENABLE_PAYMENTOPTION'));
+ 
++            $uploadErrors = array();
+             foreach ($languages as $lang) {
+-                if (isset($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']])
+-                    && isset($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['tmp_name'])
+-                    && !empty($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['tmp_name'])) {
+-                    if ($error = ImageManager::validateUpload($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']], 4000000)) {
+-                        return $error;
+-                    } else {
+-                        $ext = substr($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['name'], strrpos($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['name'], '.') + 1);
+-                        $file_name = md5($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['name']).'.'.$ext;
+-                        if (!move_uploaded_file($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['tmp_name'], dirname(__FILE__).DIRECTORY_SEPARATOR .'img' . DIRECTORY_SEPARATOR.$file_name)) {
+-                            return $this->displayError($this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error'));
+-                        } else {
+-                            if (Configuration::hasContext('NBZ_PAYMENT_OPTION_LOGO', $lang['id_lang'], Shop::getContext())
+-                                && Configuration::get('NBZ_PAYMENT_OPTION_LOGO', $lang['id_lang']) != $file_name) {
+-                                @unlink(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . Configuration::get('NBZ_PAYMENT_OPTION_LOGO', $lang['id_lang']));
+-                            }
+-
+-                            $values['NBZ_PAYMENT_OPTION_LOGO'][$lang['id_lang']] = $file_name;
+-                        }
++                $idLang = (int) $lang['id_lang'];
++                $fieldName = 'NBZ_PAYMENT_OPTION_LOGO_'.$idLang;
++                $currentLogo = (string) Configuration::get('NBZ_PAYMENT_OPTION_LOGO', $idLang);
++                $values['NBZ_PAYMENT_OPTION_LOGO'][$idLang] = $currentLogo;
++
++                if (isset($_FILES[$fieldName]) && !empty($_FILES[$fieldName]['tmp_name'])) {
++                    $newLogo = $this->saveLogoUpload($_FILES[$fieldName], $idLang, $uploadErrors);
++                    if ($newLogo) {
++                        $this->removeLogoFile($currentLogo);
++                        $values['NBZ_PAYMENT_OPTION_LOGO'][$idLang] = $newLogo;
+                     }
+-
+-                    $update_images_values = true;
+                 }
+ 
+-                $values['NBZ_PAYMENT_OPTION_TEXT'][$lang['id_lang']] = Tools::getValue('NBZ_PAYMENT_OPTION_TEXT_'.$lang['id_lang']);
+-            }
+-
+-            if ($update_images_values) {
+-                Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO', $values['NBZ_PAYMENT_OPTION_LOGO']);
++                $values['NBZ_PAYMENT_OPTION_TEXT'][$idLang] = Tools::getValue('NBZ_PAYMENT_OPTION_TEXT_'.$idLang);
+             }
+ 
++            Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO', $values['NBZ_PAYMENT_OPTION_LOGO']);
+             Configuration::updateValue('NBZ_PAYMENT_OPTION_TEXT', $values['NBZ_PAYMENT_OPTION_TEXT']);
+ 
++            if (count($uploadErrors)) {
++                return $this->displayError(implode('<br />', array_map(array('Tools', 'safeOutput'), $uploadErrors)));
++            }
++
+             return $this->displayConfirmation($this->trans('The settings have been updated.', array(), 'Admin.Notifications.Success'));
+         }
+     }
+ 
++    /**
++     * Validates and stores an uploaded payment logo in modules/niubiz/img/ (same folder as before).
++     *
++     * The image is re-encoded with PrestaShop's ImageManager and the temporary upload is left untouched
++     * (it is NOT moved with move_uploaded_file): on PrestaShop 8/9 the Symfony request still holds a
++     * reference to the temporary file, and moving it makes the back office crash afterwards with
++     * "FileNotFoundException: The file /tmp/phpXXXX does not exist".
++     *
++     * @return string|false File name stored in img/, or false (messages are appended to $errors)
++     */
++    protected function saveLogoUpload(array $file, $idLang, array &$errors)
++    {
++        if (isset($file['error']) && (int) $file['error'] !== UPLOAD_ERR_OK) {
++            $errors[] = $this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error');
++            return false;
++        }
++
++        if ($error = ImageManager::validateUpload($file, 4000000, array('jpg', 'jpeg', 'gif', 'png'))) {
++            $errors[] = $error;
++            return false;
++        }
++
++        $info = @getimagesize($file['tmp_name']);
++        $extensions = array('image/png' => 'png', 'image/gif' => 'gif', 'image/jpeg' => 'jpg');
++        if (!$info || !isset($extensions[$info['mime']])) {
++            $errors[] = $this->trans('Invalid image', array(), 'Admin.Notifications.Error');
++            return false;
++        }
++        $ext = $extensions[$info['mime']];
++
++        $dir = $this->getLocalPath().'img/';
++        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
++            $errors[] = $this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error');
++            return false;
++        }
++
++        $fileName = 'logo_'.(int) $idLang.'_'.Tools::passwdGen(10, 'NO_NUMERIC').'.'.$ext;
++        // Original size is kept (width/height null); PNG/GIF transparency is preserved.
++        if (!ImageManager::resize($file['tmp_name'], $dir.$fileName, null, null, $ext)) {
++            $errors[] = $this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error');
++            return false;
++        }
++        // ImageManager::resize() drops a helper "fileType" marker next to the image: not needed here.
++        @unlink($dir.'fileType');
++
++        return $fileName;
++    }
++
++    protected function removeLogoFile($fileName)
++    {
++        $fileName = basename((string) $fileName);
++        if ($fileName === '' || $fileName === 'index.php') {
++            return;
++        }
++        $path = $this->getLocalPath().'img/'.$fileName;
++        if (is_file($path)) {
++            @unlink($path);
++        }
++    }
++
+     /**
+     * Add the CSS & JavaScript files you want to be loaded in the BO.
+     */
+diff --git a/upgrade/upgrade-3.2.0.php b/upgrade/upgrade-3.2.0.php
+index 4c3d89b..dcfee45 100644
+--- a/upgrade/upgrade-3.2.0.php
++++ b/upgrade/upgrade-3.2.0.php
+@@ -18,7 +18,9 @@ function upgrade_module_3_2_0($module)
+     $ok = true;
+ 
+     // 1. Make sure tables exist (idempotent: CREATE TABLE IF NOT EXISTS).
+-    if (include(dirname(__FILE__).'/../sql/install.php') === false) {
++    // `include (...) === false` would be parsed as include((...) === false): assign first.
++    $sqlResult = include dirname(__FILE__).'/../sql/install.php';
++    if ($sqlResult === false) {
+         $ok = false;
+     }
+ 
+-- 
+2.43.0
+

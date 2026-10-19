@@ -61,13 +61,10 @@
 				<div class="form-group">
 					{if isset($fields_value[$input.name][$language.id_lang]) && $fields_value[$input.name][$language.id_lang] != ''}
 					<div id="{$input.name}-{$language.id_lang}-images-thumbnails" class="col-lg-12">
-						<img src="{$uri}img/{$fields_value[$input.name][$language.id_lang]}" class="img-thumbnail"/>
+						<img src="{if isset($uri)}{$uri}{/if}img/{$fields_value[$input.name][$language.id_lang]}" class="img-thumbnail"/>
 					</div>
 					{/if}
 				</div>
-				{if $languages|count > 1}
-					</div>
-				{/if}
 				<script>
 				$(document).ready(function(){
 					$('#{$input.name}_{$language.id_lang}-selectbutton').click(function(e){
@@ -79,7 +76,10 @@
 						$('#{$input.name}_{$language.id_lang}-name').val(file[file.length-1]);
 					});
 				});
-			</script>
+				</script>
+				{if $languages|count > 1}
+					</div>
+				{/if}
 			{/foreach}
 			{if isset($input.desc) && !empty($input.desc)}
 				<p class="help-block">

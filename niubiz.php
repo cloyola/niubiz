@@ -57,8 +57,8 @@ class Niubiz extends PaymentModule
     {
         $this->name = 'niubiz';
         $this->tab = 'payments_gateways';
-        $this->version = '3.2.0';
-        $this->author = 'Victor Castro';
+        $this->version = '3.2.1';
+        $this->author = 'BlueShell Digital';
         $this->need_instance = 0;
         $this->controllers = array('validation', 'return', 'callback');
 
@@ -168,7 +168,13 @@ class Niubiz extends PaymentModule
             return false;
         }
 
-        if (include(_PS_MODULE_DIR_ . 'niubiz/sql/install.php') === false) {
+        // Assign first: on PHP 8, `include (path) === false` is parsed as `include ''`.
+        $installFile = _PS_MODULE_DIR_ . 'niubiz/sql/install.php';
+        $installed = false;
+        if (is_file($installFile)) {
+            $installed = include $installFile;
+        }
+        if ($installed === false) {
             return false;
         }
 
