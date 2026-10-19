@@ -13,7 +13,7 @@
 
       <div class="card-body d-print-none">
           
-          <img src="{$logoNiubiz}">
+          <img src="{$logoNiubiz|escape:'html':'UTF-8'}" style="max-height:40px">
           
           <table class="table table-bordered">
               <tr>
@@ -24,71 +24,71 @@
               {if $logNbz.id}
               <tr>
                   <td>id_log</td>
-                  <td>{$logNbz.id}</td>
+                  <td>{$logNbz.id|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
               {if $logNbz.id_order}
               <tr>
                   <td>id_order</td>
-                  <td>{$logNbz.id_order}</td>
+                  <td>{$logNbz.id_order|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
               {if $logNbz.id_cart}
               <tr>
                   <td>id_cart</td>
-                  <td>{$logNbz.id_cart}</td>
+                  <td>{$logNbz.id_cart|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
               {if $logNbz.id_customer}
               <tr>
                   <td>id_customer</td>
-                  <td>{$logNbz.id_customer}</td>
+                  <td>{$logNbz.id_customer|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
               {if $logNbz.dsc_cod_accion}
               <tr>
                   <td>Cod Action</td>
-                  <td>{$logNbz.dsc_cod_accion}</td>
+                  <td>{$logNbz.dsc_cod_accion|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
               {if $logNbz.transactiontoken}
               <tr>
                   <td>transactiontoken</td>
-                  <td>{$logNbz.transactiontoken}
-                  <button onclick="copyToClipboard('{$logNbz.transactiontoken}')" class="btn btn-sm btn-default"> Copiar </button></td>
+                  <td>{$logNbz.transactiontoken|escape:'html':'UTF-8'}
+                  <button onclick="copyToClipboard('{$logNbz.transactiontoken|escape:'javascript':'UTF-8'}')" class="btn btn-sm btn-default"> Copiar </button></td>
               </tr>
               {/if}
               
               {if $logNbz.pan}
               <tr>
                   <td>PAN de tarjeta</td>
-                  <td>{$logNbz.pan}</td>
+                  <td>{$logNbz.pan|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
                {if $logNbz.numorden}
               <tr>
                   <td>Numero de pedido</td>
-                  <td>{$logNbz.numorden}</td>
+                  <td>{$logNbz.numorden|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
                {if $logNbz.dsc_eci}
               <tr>
                   <td>Tipo</td>
-                  <td>{$logNbz.dsc_eci}</td>
+                  <td>{$logNbz.dsc_eci|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
               
                {if $logNbz.date_add}
               <tr>
                   <td>Fecha</td>
-                  <td>{$logNbz.date_add}</td>
+                  <td>{$logNbz.date_add|escape:'html':'UTF-8'}</td>
               </tr>
               {/if}
           

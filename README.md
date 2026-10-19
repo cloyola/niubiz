@@ -32,3 +32,12 @@ Add you parameters sent for Niubiz in form on Configure Module.
 ### Contributing
 - **Victor Castro** <<victorcastro.io@icloud.com>>
 - **Roger Pecho** <<integraciones@visanet.com.pe>>
+
+### Compatibility
+| PrestaShop | PHP | Status |
+|---|---|---|
+| 1.7.6+ and 8.x | PHP 7.2+ (as supported by that PrestaShop version) | declared compatible, not retested in 3.2.0 |
+| 9.0 / 9.1 | 8.1 - 8.5 (per PrestaShop's system requirements chart) | target of 3.2.0, needs staging test |
+
+Upgrading from an older module version: just overwrite the module folder (or upload the zip) and click *Upgrade* in Module Manager;
+`upgrade/upgrade-3.2.0.php` keeps the existing configuration (`NBZ_*`), tables (`niubiz_*`), the callback URL given to Niubiz/PagoEfectivo and the logos stored in `img/`.

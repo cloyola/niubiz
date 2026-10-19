@@ -39,7 +39,7 @@
 
 {if isset($nbz_error) && $nbz_error != ''}
 <p class="alert alert-danger">
-  {$nbz_error}
+  {$nbz_error|escape:'html':'UTF-8'}
 </p>
 {/if}
 
@@ -82,8 +82,8 @@
         recurrencetype: "",
         recurrenceamount: "",
         recurrencemaxamount: "",
-        timeouturl: "{$linkActionReturn}",
-        action: "{$linkActionReturn}"
+        timeouturl: "{$linkActionReturn|escape:'javascript':'UTF-8'}",
+        action: "{$linkActionReturn|escape:'javascript':'UTF-8'}"
       });
       VisanetCheckout.open();
     }
@@ -93,8 +93,7 @@
 {if $nbz_debug}
   <br>
   <pre style="background: #eeeeee;">
-  {$var|print_r:true}
-  linkReturn={$linkReturn}
+  {$nbz_dump|escape:'html':'UTF-8'}
   </pre>
 {/if}
 

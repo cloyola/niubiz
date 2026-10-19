@@ -36,3 +36,5 @@ foreach ($sql as $query) {
         return false;
     }
 }
+
+return true;

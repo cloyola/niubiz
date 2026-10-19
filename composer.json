@@ -1,0 +1,9 @@
+{
+  "name": "vhc-prestashop-peru/niubiz",
+  "description": "Niubiz (Visanet Peru) payment module for PrestaShop 1.7.6 - 9.x",
+  "type": "prestashop-module",
+  "license": "AFL-3.0",
+  "authors": [{"name": "Victor Castro"}],
+  "require": {"php": ">=7.2", "ext-curl": "*", "ext-json": "*"},
+  "config": {"prepend-autoloader": false}
+}
