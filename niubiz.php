@@ -321,6 +321,7 @@ class Niubiz extends PaymentModule
             'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
             'languages' => $this->context->controller->getLanguages(),
             'id_language' => $this->context->language->id,
+            'uri' => $this->_path,
         );
 
         return $helper->generateForm($this->getConfigForm());
@@ -582,63 +583,156 @@ class Niubiz extends PaymentModule
      */
     protected function postProcess()
     {
+        if (!Tools::isSubmit('submitNiubizModule')) {
+            return '';
+        }
+
         $languages = Language::getLanguages(false);
-      $values = array();
-      $update_images_values = false;
+        $errors = array();
+        $imgDir = dirname(__FILE__).DIRECTORY_SEPARATOR.'img';
+        if (!is_dir($imgDir)) {
+            @mkdir($imgDir, 0755, true);
+        }
 
-        if (Tools::isSubmit('submitNiubizModule')) {
-            if (!is_dir(dirname(__FILE__).DIRECTORY_SEPARATOR.'img')) {
-                @mkdir(dirname(__FILE__).DIRECTORY_SEPARATOR.'img', 0755, true);
-            }
-            Configuration::updateValue('NBZ_LOGO', Tools::getValue('NBZ_LOGO'));
-            Configuration::updateValue('NBZ_ENVIROMENT', Tools::getValue('NBZ_ENVIROMENT'));
-            Configuration::updateValue('NBZ_MERCHANTID_PEN', Tools::getValue('NBZ_MERCHANTID_PEN'));
-            Configuration::updateValue('NBZ_DEBUG', Tools::getValue('NBZ_DEBUG'));
-            Configuration::updateValue('NBZ_USER_PEN', Tools::getValue('NBZ_USER_PEN'));
-            Configuration::updateValue('NBZ_PASSWORD_PEN', Tools::getValue('NBZ_PASSWORD_PEN'));
-            Configuration::updateValue('NBZ_MERCHANTID_USD', Tools::getValue('NBZ_MERCHANTID_USD'));
-            Configuration::updateValue('NBZ_USER_USD', Tools::getValue('NBZ_USER_USD'));
-            Configuration::updateValue('NBZ_PASSWORD_USD', Tools::getValue('NBZ_PASSWORD_USD'));
-            Configuration::updateValue('NBZ_PEN', Tools::getValue('NBZ_PEN'));
-            Configuration::updateValue('NBZ_USD', Tools::getValue('NBZ_USD'));
-            Configuration::updateValue('NBZ_CALLBACK', $this->callback);
-            Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO_SHOW', Tools::getValue('NBZ_PAYMENT_OPTION_LOGO_SHOW'));
-            Configuration::updateValue('NBZ_ENABLE_PAYMENTOPTION', Tools::getValue('NBZ_ENABLE_PAYMENTOPTION'));
+        Configuration::updateValue('NBZ_LOGO', Tools::getValue('NBZ_LOGO'));
+        Configuration::updateValue('NBZ_ENVIROMENT', Tools::getValue('NBZ_ENVIROMENT'));
+        Configuration::updateValue('NBZ_MERCHANTID_PEN', Tools::getValue('NBZ_MERCHANTID_PEN'));
+        Configuration::updateValue('NBZ_DEBUG', Tools::getValue('NBZ_DEBUG'));
+        Configuration::updateValue('NBZ_USER_PEN', Tools::getValue('NBZ_USER_PEN'));
+        Configuration::updateValue('NBZ_PASSWORD_PEN', Tools::getValue('NBZ_PASSWORD_PEN'));
+        Configuration::updateValue('NBZ_MERCHANTID_USD', Tools::getValue('NBZ_MERCHANTID_USD'));
+        Configuration::updateValue('NBZ_USER_USD', Tools::getValue('NBZ_USER_USD'));
+        Configuration::updateValue('NBZ_PASSWORD_USD', Tools::getValue('NBZ_PASSWORD_USD'));
+        Configuration::updateValue('NBZ_PEN', Tools::getValue('NBZ_PEN'));
+        Configuration::updateValue('NBZ_USD', Tools::getValue('NBZ_USD'));
+        Configuration::updateValue('NBZ_CALLBACK', $this->callback);
+        Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO_SHOW', Tools::getValue('NBZ_PAYMENT_OPTION_LOGO_SHOW'));
+        Configuration::updateValue('NBZ_ENABLE_PAYMENTOPTION', Tools::getValue('NBZ_ENABLE_PAYMENTOPTION'));
 
-            foreach ($languages as $lang) {
-                if (isset($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']])
-                    && isset($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['tmp_name'])
-                    && !empty($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['tmp_name'])) {
-                    if ($error = ImageManager::validateUpload($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']], 4000000)) {
-                        return $error;
-                    } else {
-                        $ext = substr($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['name'], strrpos($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['name'], '.') + 1);
-                        $file_name = md5($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['name']).'.'.$ext;
-                        if (!move_uploaded_file($_FILES['NBZ_PAYMENT_OPTION_LOGO_'.$lang['id_lang']]['tmp_name'], dirname(__FILE__).DIRECTORY_SEPARATOR .'img' . DIRECTORY_SEPARATOR.$file_name)) {
-                            return $this->displayError($this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error'));
-                        } else {
-                            if (Configuration::hasContext('NBZ_PAYMENT_OPTION_LOGO', $lang['id_lang'], Shop::getContext())
-                                && Configuration::get('NBZ_PAYMENT_OPTION_LOGO', $lang['id_lang']) != $file_name) {
-                                @unlink(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . Configuration::get('NBZ_PAYMENT_OPTION_LOGO', $lang['id_lang']));
-                            }
+        // Keep every language. updateValue() replaces the whole multilang value,
+        // so a logo uploaded for one language must not wipe the others.
+        $logoValues = array();
+        $textValues = array();
+        foreach ($languages as $lang) {
+            $idLang = (int) $lang['id_lang'];
+            $logoValues[$idLang] = (string) Configuration::get('NBZ_PAYMENT_OPTION_LOGO', $idLang);
+            $textValues[$idLang] = Tools::getValue('NBZ_PAYMENT_OPTION_TEXT_'.$idLang);
+        }
 
-                            $values['NBZ_PAYMENT_OPTION_LOGO'][$lang['id_lang']] = $file_name;
-                        }
-                    }
-
-                    $update_images_values = true;
-                }
-
-                $values['NBZ_PAYMENT_OPTION_TEXT'][$lang['id_lang']] = Tools::getValue('NBZ_PAYMENT_OPTION_TEXT_'.$lang['id_lang']);
+        foreach ($languages as $lang) {
+            $idLang = (int) $lang['id_lang'];
+            $uploaded = $this->storePaymentLogo('NBZ_PAYMENT_OPTION_LOGO_'.$idLang, $imgDir, $errors);
+            if (!$uploaded) {
+                continue;
             }
 
-            if ($update_images_values) {
-                Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO', $values['NBZ_PAYMENT_OPTION_LOGO']);
+            $previous = $logoValues[$idLang];
+            $logoValues[$idLang] = $uploaded;
+            if ($previous !== '' && $previous !== $uploaded && !in_array($previous, $logoValues, true)) {
+                $this->deletePaymentLogo($imgDir, $previous);
             }
+        }
 
-            Configuration::updateValue('NBZ_PAYMENT_OPTION_TEXT', $values['NBZ_PAYMENT_OPTION_TEXT']);
+        Configuration::updateValue('NBZ_PAYMENT_OPTION_LOGO', $logoValues);
+        Configuration::updateValue('NBZ_PAYMENT_OPTION_TEXT', $textValues);
 
-            return $this->displayConfirmation($this->trans('The settings have been updated.', array(), 'Admin.Notifications.Success'));
+        $output = '';
+        if ($errors) {
+            $output .= $this->displayError(implode('<br />', $errors));
+        }
+
+        return $output.$this->displayConfirmation($this->trans('The settings have been updated.', array(), 'Admin.Notifications.Success'));
+    }
+
+    /**
+     * Re-encode one uploaded payment logo into img/.
+     *
+     * The PHP temp file is left in place. On PrestaShop 8/9, move_uploaded_file()
+     * removes /tmp/phpXXXX and a later back-office hook throws
+     * FileNotFoundException because Symfony still points at that path.
+     *
+     * @param string $field
+     * @param string $imgDir
+     * @param array $errors
+     *
+     * @return string|false Saved file name, or false when this language has no new file
+     */
+    private function storePaymentLogo($field, $imgDir, array &$errors)
+    {
+        if (!isset($_FILES[$field]) || !is_array($_FILES[$field])) {
+            return false;
+        }
+
+        $file = $_FILES[$field];
+        $errorCode = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+        if ($errorCode === UPLOAD_ERR_NO_FILE || empty($file['tmp_name'])) {
+            return false;
+        }
+        if ($errorCode !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            $errors[] = $this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error');
+
+            return false;
+        }
+
+        $allowedExtensions = array('gif', 'jpg', 'jpeg', 'jpe', 'png');
+        if ($error = ImageManager::validateUpload($file, 4000000, $allowedExtensions)) {
+            $errors[] = $error;
+
+            return false;
+        }
+
+        $info = @getimagesize($file['tmp_name']);
+        $types = array(
+            IMAGETYPE_GIF => 'gif',
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+        );
+        if (!$info || empty($info[0]) || empty($info[1]) || !isset($info[2]) || !isset($types[$info[2]])) {
+            $errors[] = $this->trans('Image format not recognized, allowed formats are: .gif, .jpg, .png', array(), 'Admin.Notifications.Error');
+
+            return false;
+        }
+        if (!is_dir($imgDir) || !is_writable($imgDir)) {
+            $errors[] = $this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error');
+
+            return false;
+        }
+
+        try {
+            $fileName = bin2hex(random_bytes(16)).'.'.$types[$info[2]];
+        } catch (Exception $e) {
+            $fileName = md5(uniqid('', true)).'.'.$types[$info[2]];
+        }
+
+        $destination = $imgDir.DIRECTORY_SEPARATOR.$fileName;
+        $resizeError = 0;
+        if (!ImageManager::resize($file['tmp_name'], $destination, (int) $info[0], (int) $info[1], $types[$info[2]], true, $resizeError)) {
+            if (is_file($destination)) {
+                @unlink($destination);
+            }
+            $errors[] = $this->trans('An error occurred while attempting to upload the file.', array(), 'Admin.Notifications.Error');
+
+            return false;
+        }
+
+        return $fileName;
+    }
+
+    /**
+     * Delete a previously stored payment logo. Only a bare file name inside img/ is accepted.
+     *
+     * @param string $imgDir
+     * @param string $fileName
+     */
+    private function deletePaymentLogo($imgDir, $fileName)
+    {
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $fileName)) {
+            return;
+        }
+
+        $path = $imgDir.DIRECTORY_SEPARATOR.$fileName;
+        if (is_file($path)) {
+            @unlink($path);
         }
     }
 
