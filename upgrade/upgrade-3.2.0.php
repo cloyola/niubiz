@@ -18,7 +18,13 @@ function upgrade_module_3_2_0($module)
     $ok = true;
 
     // 1. Make sure tables exist (idempotent: CREATE TABLE IF NOT EXISTS).
-    if (include(dirname(__FILE__).'/../sql/install.php') === false) {
+    // Assign first: on PHP 8, `include (path) === false` is parsed as `include ''`.
+    $installFile = dirname(__FILE__).'/../sql/install.php';
+    $installed = false;
+    if (is_file($installFile)) {
+        $installed = include $installFile;
+    }
+    if ($installed === false) {
         $ok = false;
     }
 
