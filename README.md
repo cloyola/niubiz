@@ -35,9 +35,9 @@ Add you parameters sent for Niubiz in form on Configure Module.
 - **Carlos Loyola** <<carlosloyolav@gmail.com>>
 
 ### Testing
-Merchant codes [Niubiz Peru merchants](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#c%C3%B3digo-de-comercio)
-Credentials [Niubiz Peru credentials](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#credenciales)
-Credit cards [Niubiz Peru credit cards](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#tarjetas-de-prueba)
+- Merchant codes [Niubiz Peru merchants](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#c%C3%B3digo-de-comercio)
+- Credentials [Niubiz Peru credentials](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#credenciales)
+- Credit cards [Niubiz Peru credit cards](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#tarjetas-de-prueba)
 
 ### Compatibility
 | PrestaShop | PHP | Status |
