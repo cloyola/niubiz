@@ -42,11 +42,11 @@
 
 <div class="panel" id="fieldset_0_0" style="display:none">
 	<div class="panel-heading">
-		<i class="icon-medkit"></i> {l s='SUPPORT AND GUARANTEE' d='Modules.Niubiz.Checkout'}
+		<i class="icon-medkit"></i> {l s='SUPPORT AND GUARANTEE' d='Modules.Niubiz.Admin'}
 	</div>
 	<div class="form-wrapper">
 		<div class="form-group">
-			<p> {l s='This module was developed by Niubiz, for support you can contact in integraciones.niubiz@necomplus.com or entry to' d='Modules.Niubiz.Checkout'}: <a href="https://github.com/IntegracionesVisaNet" target="_blank">www.niubiz.com</a></p>
+			<p> {l s='This module was developed by Niubiz, for support you can contact in integraciones.niubiz@necomplus.com or entry to' d='Modules.Niubiz.Admin'}: <a href="https://github.com/IntegracionesVisaNet" target="_blank">www.niubiz.com</a></p>
 		</div>
 	</div>
 </div>

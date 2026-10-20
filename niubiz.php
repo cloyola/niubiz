@@ -74,8 +74,8 @@ class Niubiz extends PaymentModule
 
         parent::__construct();
 
-        $this->displayName = $this->l('Niubiz - Pagos con tarjeta de crédito y débito');
-        $this->description = $this->l('Realiza pagos con tu tarjeta de crédito y débito en Perú');
+        $this->displayName = $this->trans('Niubiz - Pagos con tarjeta de crédito y débito', array(), 'Modules.Niubiz.Admin');
+        $this->description = $this->trans('Realiza pagos con tu tarjeta de crédito y débito en Perú', array(), 'Modules.Niubiz.Admin');
         $this->email = "integraciones.niubiz@necomplus.com";
         $this->github = "https://github.com/IntegracionesVisaNet";
 
@@ -164,7 +164,7 @@ class Niubiz extends PaymentModule
     public function install()
     {
         if (extension_loaded('curl') == false) {
-            $this->_errors[] = $this->l('You have to enable the cURL extension on your server to install this module');
+            $this->_errors[] = $this->trans('You have to enable the cURL extension on your server to install this module', array(), 'Modules.Niubiz.Admin');
             return false;
         }
 
@@ -197,12 +197,11 @@ class Niubiz extends PaymentModule
     }
 
     /**
-     * Public translation helper for the front controllers: ModuleCore::trans() is protected
-     * (PrestaShop 1.7.6 - 9.x), so $this->module->trans() is a fatal error outside the module class.
+     * Use the PrestaShop 1.7.6+ translation system (XLIFF, domains "Modules.Niubiz.*").
      */
-    public function translate($message, array $parameters = array(), $domain = 'Modules.Niubiz.Shop')
+    public function isUsingNewTranslationSystem()
     {
-        return $this->trans($message, $parameters, $domain);
+        return true;
     }
 
     public function createStateIfNotExist()
@@ -353,7 +352,7 @@ class Niubiz extends PaymentModule
                 array(
                     'type' => 'text',
                     'label' => $this->trans('Logo URL', array(), 'Modules.Niubiz.Admin'),
-                    'desc' => 'La url tiene que ir sin '.Tools::getShopProtocol(). ', solo coloque el dominio y la ruta de la imagen',
+                    'desc' => $this->trans('La url tiene que ir sin %protocol%, solo coloque el dominio y la ruta de la imagen', array('%protocol%' => Tools::getShopProtocol()), 'Modules.Niubiz.Admin'),
                     'name' => 'NBZ_LOGO',
                     'required' => true,
                 ),
@@ -386,7 +385,7 @@ class Niubiz extends PaymentModule
                     'type' => 'file_lang',
                     'label' => $this->trans('Logo de pago', array(), 'Modules.Niubiz.Admin'),
                     'name' => 'NBZ_PAYMENT_OPTION_LOGO',
-                    'desc' => 'Si estás usando el tema predeterminado las dimensiones recomendadas son 26x220 px.',
+                    'desc' => $this->trans('Si estás usando el tema predeterminado las dimensiones recomendadas son 26x220 px.', array(), 'Modules.Niubiz.Admin'),
                     'lang' => true,
                 ),
             ),
@@ -806,7 +805,7 @@ class Niubiz extends PaymentModule
         $option->setModuleName($this->name)
             ->setCallToActionText($isModuleConfigured
                 ? Configuration::get('NBZ_PAYMENT_OPTION_TEXT', $this->context->language->id)
-                : $this->l('WARNING!! Niubiz OPTION_TEXT is not configured for current languaje'))
+                : $this->trans('WARNING!! Niubiz OPTION_TEXT is not configured for current languaje', array(), 'Modules.Niubiz.Shop'))
             ->setAction($this->context->link->getModuleLink($this->name, 'validation', array(), true));
 
         if ($isModuleConfigured && Configuration::get('NBZ_ENABLE_PAYMENTOPTION')) {
