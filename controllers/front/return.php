@@ -159,7 +159,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
             }
             
         } else {
-            $this->errors[] = $this->module->getTranslator()->trans('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Shop');
+            $this->context->smarty->assign('nbz_errors', [$this->module->getTranslator()->trans('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Shop')]);
 
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
         }
