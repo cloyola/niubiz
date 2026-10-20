@@ -58,7 +58,11 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
                 'nbz_dump' => '',
             ));
             // The theme does not provide $errors on module pages: the template reads $nbz_errors.
-            $this->context->smarty->assign('nbz_errors', array($this->module->getTranslator()->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Shop')));
+            $nbzErrors = array($this->module->getTranslator()->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Shop'));
+            if (Configuration::get('NBZ_DEBUG') && $this->module->lastError) {
+                $nbzErrors[] = 'DEBUG: '.$this->module->lastError;
+            }
+            $this->context->smarty->assign('nbz_errors', $nbzErrors);
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
             return;
         }

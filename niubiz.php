@@ -52,6 +52,8 @@ class Niubiz extends PaymentModule
     public $urlScript = '';
     public $acceptedCurrency = array();
     public $html = '';
+    // Last Niubiz API failure (no credentials inside); shown on the checkout error page when the Debugger switch is on.
+    public $lastError = '';
 
     public function __construct()
     {
@@ -947,7 +949,8 @@ class Niubiz extends PaymentModule
         $currency = $this->getActiveCurrency();
 
         if ($this->vsauser == '' || $this->vsapassword == '') {
-            PrestaShopLogger::addLog('NIUBIZ :: credentials not found for currency '.$currency->iso_code, 3);
+            $this->lastError = 'Faltan usuario/contraseña de Niubiz para la moneda '.$currency->iso_code.' (revise la configuración del módulo)';
+            PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
 
@@ -965,10 +968,15 @@ class Niubiz extends PaymentModule
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $key = curl_exec($ch);
         $error = curl_error($ch);
+        $errno = curl_errno($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($key === false || $key === '' || $key === 'Unauthorized access') {
-            PrestaShopLogger::addLog('NIUBIZ :: security API error: '.($error ? $error : (string) $key), 3);
+        if ($key === false || $key === '' || $httpCode !== 200 || stripos((string) $key, 'unauthorized') !== false) {
+            $this->lastError = 'API de seguridad ('.$this->security_api.'): HTTP '.$httpCode
+                .($errno ? ', cURL #'.$errno.' '.$error : '')
+                .($key ? ', respuesta: '.Tools::substr(strip_tags((string) $key), 0, 200) : '');
+            PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
 
@@ -1008,11 +1016,16 @@ class Niubiz extends PaymentModule
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
         $error = curl_error($ch);
+        $errno = curl_errno($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $json = json_decode((string) $response);
         if (!isset($json->sessionKey)) {
-            PrestaShopLogger::addLog('NIUBIZ :: session API error ('.$this->session_api.'): '.($error ? $error : (string) $response), 3);
+            $this->lastError = 'API de sesión ('.$this->session_api.'): HTTP '.$httpCode
+                .($errno ? ', cURL #'.$errno.' '.$error : '')
+                .($response ? ', respuesta: '.Tools::substr(strip_tags((string) $response), 0, 300) : '');
+            PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
 
