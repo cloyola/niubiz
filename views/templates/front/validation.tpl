@@ -90,12 +90,5 @@
   </script>
   
 
-{if $nbz_debug}
-  <br>
-  <pre style="background: #eeeeee;">
-  {$nbz_dump|escape:'html':'UTF-8'}
-  </pre>
-{/if}
-
 <br></br>
 {/block}

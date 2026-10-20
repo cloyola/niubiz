@@ -59,7 +59,7 @@ class Niubiz extends PaymentModule
     {
         $this->name = 'niubiz';
         $this->tab = 'payments_gateways';
-        $this->version = '3.2.2';
+        $this->version = '3.2.3';
         $this->author = 'BlueShell Digital';
         $this->need_instance = 0;
         $this->controllers = array('validation', 'return', 'callback');
@@ -841,7 +841,6 @@ class Niubiz extends PaymentModule
 
                 $this->context->smarty->assign(array(
                     'logo' => Configuration::get('NBZ_LOGO'),
-                    'debug' => Configuration::get('NBZ_DEBUG'),
                     'psVersion' => $this->psVersion,
                     'var' => $variables,
                     'checkTotal' => $this->formatPrice($cart->getOrderTotal(true, Cart::BOTH)),
