@@ -73,7 +73,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
         }
 
         if (!$authorized) {
-            die($this->module->trans('This payment method is not available.', [], 'Modules.Niubiz.Return'));
+            die($this->module->translate('This payment method is not available.', [], 'Modules.Niubiz.Return'));
         }
 
         if (!Validate::isLoadedObject($customer)) {
@@ -159,7 +159,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
             }
             
         } else {
-            $this->errors[] = $this->module->trans('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Return');
+            $this->errors[] = $this->module->translate('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Return');
 
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
         }

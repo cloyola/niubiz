@@ -2,7 +2,7 @@
 <module>
 	<name>niubiz</name>
 	<displayName><![CDATA[Niubiz - Pagos con tarjeta de crédito y débito]]></displayName>
-	<version><![CDATA[3.2.1]]></version>
+	<version><![CDATA[3.2.2]]></version>
 	<description><![CDATA[Realiza pagos con tu tarjeta de crédito y débito en Perú]]></description>
 	<author><![CDATA[BlueShell Digital]]></author>
 	<tab><![CDATA[payments_gateways]]></tab>

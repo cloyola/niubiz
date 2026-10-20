@@ -50,7 +50,7 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
 
         if (!$securityKey || !$sessionToken) {
             $this->context->smarty->assign(array(
-                'nbz_error' => $this->module->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Validation'),
+                'nbz_error' => $this->module->translate('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Validation'),
                 'nbz_debug' => false,
                 'var' => array(),
                 'logo' => Configuration::get('NBZ_LOGO'),
@@ -58,7 +58,7 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
                 'nbz_dump' => '',
             ));
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
-            $this->errors[] = $this->module->trans('No se pudo iniciar el pago con Niubiz.', array(), 'Modules.Niubiz.Validation');
+            $this->errors[] = $this->module->translate('No se pudo iniciar el pago con Niubiz.', array(), 'Modules.Niubiz.Validation');
             return;
         }
 

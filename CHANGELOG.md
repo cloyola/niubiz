@@ -1,3 +1,6 @@
+## [3.2.2] - 2026-10-20
+- FIX: front controllers called the protected `ModuleCore::trans()` (fatal error on /modulo/niubiz/validation); they now use the public `translate()` helper
+
 ## [3.2.0] - 2026-10-09
 PrestaShop 9 compatibility release (same code base still installs on PrestaShop 1.7.6+ / PHP 7.2+).
 - IMP: `ps_versions_compliancy` 1.7.6.0 - 9.99.99; code linted on PHP 8.3 and written without syntax newer than PHP 7.2

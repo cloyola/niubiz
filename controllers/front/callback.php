@@ -71,10 +71,10 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
 
                     $this->response(200, 'Order updated successfully.', $event_json);
                 } else {
-                    $this->response(422, $this->module->trans("The payment sent doen't match with the payment generated in the system.", [], 'Modules.Niubiz.Callback'));
+                    $this->response(422, $this->module->translate("The payment sent doen't match with the payment generated in the system.", [], 'Modules.Niubiz.Callback'));
                 }
             } else {
-                $this->response(422, $this->module->trans("It doesn't contain the correct structure JSON.", [], 'Modules.Niubiz.Callback'));
+                $this->response(422, $this->module->translate("It doesn't contain the correct structure JSON.", [], 'Modules.Niubiz.Callback'));
             }
         }
     }

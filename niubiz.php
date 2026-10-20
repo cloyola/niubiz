@@ -57,7 +57,7 @@ class Niubiz extends PaymentModule
     {
         $this->name = 'niubiz';
         $this->tab = 'payments_gateways';
-        $this->version = '3.2.1';
+        $this->version = '3.2.2';
         $this->author = 'BlueShell Digital';
         $this->need_instance = 0;
         $this->controllers = array('validation', 'return', 'callback');
@@ -194,6 +194,15 @@ class Niubiz extends PaymentModule
             $this->registerHook('paymentOptions') &&
             $this->registerHook('displayAdminOrderSideBottom') &&
             $this->registerHook('displayPaymentReturn');
+    }
+
+    /**
+     * Public translation helper for the front controllers: ModuleCore::trans() is protected
+     * (PrestaShop 1.7.6 - 9.x), so $this->module->trans() is a fatal error outside the module class.
+     */
+    public function translate($message, array $parameters = array(), $domain = 'Modules.Niubiz.Shop')
+    {
+        return $this->trans($message, $parameters, $domain);
     }
 
     public function createStateIfNotExist()
