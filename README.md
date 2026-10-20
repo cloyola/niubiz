@@ -34,6 +34,11 @@ Add you parameters sent for Niubiz in form on Configure Module.
 - **Roger Pecho** <<integraciones@visanet.com.pe>>
 - **Carlos Loyola** <<carlosloyolav@gmail.com>>
 
+### Testing
+Merchant codes [Niubiz Peru merchants](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#c%C3%B3digo-de-comercio)
+Credentials [Niubiz Peru credentials](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#credenciales)
+Credit cards [Niubiz Peru credit cards](https://desarrolladores.niubiz.com.pe/docs/bot%C3%B3n-de-pago-1#tarjetas-de-prueba)
+
 ### Compatibility
 | PrestaShop | PHP | Status |
 |---|---|---|
@@ -42,6 +47,17 @@ Add you parameters sent for Niubiz in form on Configure Module.
 
 Upgrading from an older module version: just overwrite the module folder (or upload the zip) and click *Upgrade* in Module Manager.
 `upgrade/upgrade-3.2.1.php` keeps the existing configuration (`NBZ_*`), tables (`niubiz_*`), the callback URL given to Niubiz/PagoEfectivo and the logos stored in `img/`. Shops coming from a version before 3.2.0 also run `upgrade/upgrade-3.2.0.php`.
+
+
+## [3.2.3] - 2026-10-20
+Production release.
+- FIX: front controllers called the protected `ModuleCore::trans()` (fatal error on /modulo/niubiz/validation); they now use `getTranslator()->trans()`
+- FIX: `error.tpl` read an undefined `$errors` variable on module pages (now `$nbz_errors`)
+- FIX: the security API answers HTTP 201: any 2xx is accepted (was rejected, so the payment could not start)
+- IMP: translations follow the PrestaShop new system: `isUsingNewTranslationSystem()`, literal strings, placeholders, domains `Modules.Niubiz.Admin` / `Modules.Niubiz.Shop`
+- IMP: API failures are written to the PrestaShop log (`NIUBIZ ::` prefix) with HTTP code / cURL error; nothing diagnostic is shown to customers
+- SEC: removed the customer-visible debug dump of session data and the raw callback file in `logs/`; with the Debugger switch on, the callback payload goes to the PrestaShop log only
+- ADD: `upgrade/upgrade-3.2.3.php` (cache clear, settings/tables/endpoints/img untouched)
 
 ## [3.2.1] - 2026-10-19
 - FIX: PHP 8 fatal on install and on upgrade: `include (path) === false` was parsed as `include ''` (ValueError: Path cannot be empty)
