@@ -32,14 +32,10 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
 
         $input = file_get_contents("php://input");
 
-        if ((bool) Configuration::get('NBZ_DEBUG')) {
-            $logDir = dirname(__FILE__).'/../../logs';
-            if (!is_dir($logDir)) {
-                $logDir = _PS_ROOT_DIR_.'/var/logs';
-            }
-            if (is_dir($logDir) && is_writable($logDir)) {
-                file_put_contents($logDir.'/niubiz_callback.txt', $input);
-            }
+        // Debugger switch (module configuration): keep the raw notification in the PrestaShop log (Advanced Parameters > Logs),
+        // never in a file inside the web root and never printed to the page.
+        if ((bool) Configuration::get('NBZ_DEBUG') && $input !== '') {
+            PrestaShopLogger::addLog('NIUBIZ callback: '.Tools::substr($input, 0, 2000), 1);
         }
 
         if ($input === '') {
@@ -71,10 +67,10 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
 
                     $this->response(200, 'Order updated successfully.', $event_json);
                 } else {
-                    $this->response(422, $this->module->trans("The payment sent doen't match with the payment generated in the system.", [], 'Modules.Niubiz.Callback'));
+                    $this->response(422, $this->module->getTranslator()->trans("The payment sent doen't match with the payment generated in the system.", [], 'Modules.Niubiz.Shop'));
                 }
             } else {
-                $this->response(422, $this->module->trans("It doesn't contain the correct structure JSON.", [], 'Modules.Niubiz.Callback'));
+                $this->response(422, $this->module->getTranslator()->trans("It doesn't contain the correct structure JSON.", [], 'Modules.Niubiz.Shop'));
             }
         }
     }

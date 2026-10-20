@@ -50,15 +50,15 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
 
         if (!$securityKey || !$sessionToken) {
             $this->context->smarty->assign(array(
-                'nbz_error' => $this->module->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Validation'),
-                'nbz_debug' => false,
+                'nbz_error' => $this->module->getTranslator()->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Shop'),
                 'var' => array(),
                 'logo' => Configuration::get('NBZ_LOGO'),
                 'linkActionReturn' => '',
-                'nbz_dump' => '',
             ));
+            // The theme does not provide $errors on module pages: the template reads $nbz_errors.
+            $nbzErrors = array($this->module->getTranslator()->trans('No se pudo iniciar el pago con Niubiz. Por favor intente nuevamente o elija otro medio de pago.', array(), 'Modules.Niubiz.Shop'));
+            $this->context->smarty->assign('nbz_errors', $nbzErrors);
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
-            $this->errors[] = $this->module->trans('No se pudo iniciar el pago con Niubiz.', array(), 'Modules.Niubiz.Validation');
             return;
         }
 
@@ -92,12 +92,9 @@ class NiubizValidationModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign(array(
             'logo' => Configuration::get('NBZ_LOGO'),
             'nbz_error' => $nbz_error,
-            'nbz_debug' => (bool) Configuration::get('NBZ_DEBUG'),
             'psVersion' => $this->module->psVersion,
             'var' => $variables,
             'linkActionReturn' => $linkActionReturn,
-            // Smarty 4 (PrestaShop 9) no longer allows arbitrary PHP functions as modifiers ({$var|print_r:true}).
-            'nbz_dump' => (bool) Configuration::get('NBZ_DEBUG') ? print_r($variables, true).'linkReturn='.$linkActionReturn : '',
         ));
 
         $this->setTemplate('module:niubiz/views/templates/front/validation.tpl');

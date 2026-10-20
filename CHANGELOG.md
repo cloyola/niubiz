@@ -1,3 +1,16 @@
+## [3.2.3] - 2026-10-20
+Production release.
+- FIX: front controllers called the protected `ModuleCore::trans()` (fatal error on /modulo/niubiz/validation); they now use `getTranslator()->trans()`
+- FIX: `error.tpl` read an undefined `$errors` variable on module pages (now `$nbz_errors`)
+- FIX: the security API answers HTTP 201: any 2xx is accepted (was rejected, so the payment could not start)
+- IMP: translations follow the PrestaShop new system: `isUsingNewTranslationSystem()`, literal strings, placeholders, domains `Modules.Niubiz.Admin` / `Modules.Niubiz.Shop`
+- IMP: API failures are written to the PrestaShop log (`NIUBIZ ::` prefix) with HTTP code / cURL error; nothing diagnostic is shown to customers
+- SEC: removed the customer-visible debug dump of session data and the raw callback file in `logs/`; with the Debugger switch on, the callback payload goes to the PrestaShop log only
+- ADD: `upgrade/upgrade-3.2.3.php` (cache clear, settings/tables/endpoints/img untouched)
+
+## [3.2.2] - 2026-10-20
+- FIX: front controllers called the protected `ModuleCore::trans()` (fatal error on /modulo/niubiz/validation); they now use the public `translate()` helper
+
 ## [3.2.0] - 2026-10-09
 PrestaShop 9 compatibility release (same code base still installs on PrestaShop 1.7.6+ / PHP 7.2+).
 - IMP: `ps_versions_compliancy` 1.7.6.0 - 9.99.99; code linted on PHP 8.3 and written without syntax newer than PHP 7.2

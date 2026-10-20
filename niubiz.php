@@ -52,12 +52,14 @@ class Niubiz extends PaymentModule
     public $urlScript = '';
     public $acceptedCurrency = array();
     public $html = '';
+    // Last Niubiz API failure (no credentials inside); shown on the checkout error page when the Debugger switch is on.
+    public $lastError = '';
 
     public function __construct()
     {
         $this->name = 'niubiz';
         $this->tab = 'payments_gateways';
-        $this->version = '3.2.1';
+        $this->version = '3.2.3';
         $this->author = 'BlueShell Digital';
         $this->need_instance = 0;
         $this->controllers = array('validation', 'return', 'callback');
@@ -74,8 +76,8 @@ class Niubiz extends PaymentModule
 
         parent::__construct();
 
-        $this->displayName = $this->l('Niubiz - Pagos con tarjeta de crédito y débito');
-        $this->description = $this->l('Realiza pagos con tu tarjeta de crédito y débito en Perú');
+        $this->displayName = $this->trans('Niubiz - Pagos con tarjeta de crédito y débito', array(), 'Modules.Niubiz.Admin');
+        $this->description = $this->trans('Realiza pagos con tu tarjeta de crédito y débito en Perú', array(), 'Modules.Niubiz.Admin');
         $this->email = "integraciones.niubiz@necomplus.com";
         $this->github = "https://github.com/IntegracionesVisaNet";
 
@@ -164,7 +166,7 @@ class Niubiz extends PaymentModule
     public function install()
     {
         if (extension_loaded('curl') == false) {
-            $this->_errors[] = $this->l('You have to enable the cURL extension on your server to install this module');
+            $this->_errors[] = $this->trans('You have to enable the cURL extension on your server to install this module', array(), 'Modules.Niubiz.Admin');
             return false;
         }
 
@@ -194,6 +196,14 @@ class Niubiz extends PaymentModule
             $this->registerHook('paymentOptions') &&
             $this->registerHook('displayAdminOrderSideBottom') &&
             $this->registerHook('displayPaymentReturn');
+    }
+
+    /**
+     * Use the PrestaShop 1.7.6+ translation system (XLIFF, domains "Modules.Niubiz.*").
+     */
+    public function isUsingNewTranslationSystem()
+    {
+        return true;
     }
 
     public function createStateIfNotExist()
@@ -344,7 +354,7 @@ class Niubiz extends PaymentModule
                 array(
                     'type' => 'text',
                     'label' => $this->trans('Logo URL', array(), 'Modules.Niubiz.Admin'),
-                    'desc' => 'La url tiene que ir sin '.Tools::getShopProtocol(). ', solo coloque el dominio y la ruta de la imagen',
+                    'desc' => $this->trans('La url tiene que ir sin %protocol%, solo coloque el dominio y la ruta de la imagen', array('%protocol%' => Tools::getShopProtocol()), 'Modules.Niubiz.Admin'),
                     'name' => 'NBZ_LOGO',
                     'required' => true,
                 ),
@@ -377,7 +387,7 @@ class Niubiz extends PaymentModule
                     'type' => 'file_lang',
                     'label' => $this->trans('Logo de pago', array(), 'Modules.Niubiz.Admin'),
                     'name' => 'NBZ_PAYMENT_OPTION_LOGO',
-                    'desc' => 'Si estás usando el tema predeterminado las dimensiones recomendadas son 26x220 px.',
+                    'desc' => $this->trans('Si estás usando el tema predeterminado las dimensiones recomendadas son 26x220 px.', array(), 'Modules.Niubiz.Admin'),
                     'lang' => true,
                 ),
             ),
@@ -797,7 +807,7 @@ class Niubiz extends PaymentModule
         $option->setModuleName($this->name)
             ->setCallToActionText($isModuleConfigured
                 ? Configuration::get('NBZ_PAYMENT_OPTION_TEXT', $this->context->language->id)
-                : $this->l('WARNING!! Niubiz OPTION_TEXT is not configured for current languaje'))
+                : $this->trans('WARNING!! Niubiz OPTION_TEXT is not configured for current languaje', array(), 'Modules.Niubiz.Shop'))
             ->setAction($this->context->link->getModuleLink($this->name, 'validation', array(), true));
 
         if ($isModuleConfigured && Configuration::get('NBZ_ENABLE_PAYMENTOPTION')) {
@@ -831,7 +841,6 @@ class Niubiz extends PaymentModule
 
                 $this->context->smarty->assign(array(
                     'logo' => Configuration::get('NBZ_LOGO'),
-                    'debug' => Configuration::get('NBZ_DEBUG'),
                     'psVersion' => $this->psVersion,
                     'var' => $variables,
                     'checkTotal' => $this->formatPrice($cart->getOrderTotal(true, Cart::BOTH)),
@@ -939,7 +948,8 @@ class Niubiz extends PaymentModule
         $currency = $this->getActiveCurrency();
 
         if ($this->vsauser == '' || $this->vsapassword == '') {
-            PrestaShopLogger::addLog('NIUBIZ :: credentials not found for currency '.$currency->iso_code, 3);
+            $this->lastError = 'Faltan usuario/contraseña de Niubiz para la moneda '.$currency->iso_code.' (revise la configuración del módulo)';
+            PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
 
@@ -957,10 +967,15 @@ class Niubiz extends PaymentModule
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $key = curl_exec($ch);
         $error = curl_error($ch);
+        $errno = curl_errno($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($key === false || $key === '' || $key === 'Unauthorized access') {
-            PrestaShopLogger::addLog('NIUBIZ :: security API error: '.($error ? $error : (string) $key), 3);
+        if ($key === false || $key === '' || $httpCode < 200 || $httpCode >= 300 || stripos((string) $key, 'unauthorized') !== false) {
+            $this->lastError = 'API de seguridad ('.$this->security_api.'): HTTP '.$httpCode
+                .($errno ? ', cURL #'.$errno.' '.$error : '')
+                .($key ? ', respuesta: '.Tools::substr(strip_tags((string) $key), 0, 200) : '');
+            PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
 
@@ -1000,11 +1015,16 @@ class Niubiz extends PaymentModule
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
         $error = curl_error($ch);
+        $errno = curl_errno($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $json = json_decode((string) $response);
         if (!isset($json->sessionKey)) {
-            PrestaShopLogger::addLog('NIUBIZ :: session API error ('.$this->session_api.'): '.($error ? $error : (string) $response), 3);
+            $this->lastError = 'API de sesión ('.$this->session_api.'): HTTP '.$httpCode
+                .($errno ? ', cURL #'.$errno.' '.$error : '')
+                .($response ? ', respuesta: '.Tools::substr(strip_tags((string) $response), 0, 300) : '');
+            PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
 

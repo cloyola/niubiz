@@ -26,7 +26,7 @@
 {extends file='page.tpl'}
 
 {block name='page_title'}
-  {l s='Confirmacion de pago' d='Modules.Niubiz.Validation'}
+  {l s='Confirmacion de pago' d='Modules.Niubiz.Shop'}
 {/block}
 
 {block name='page_content'}
@@ -45,9 +45,9 @@
 
 <div class="text-center">
     {if isset($nbz_error) && $nbz_error != ''}
-        <p>{l s='Vuelva a intentar el pago con otra tarjeta o verifique que los datos fueron ingresados correctamente.' d='Modules.Niubiz.Validation'}</p>
+        <p>{l s='Vuelva a intentar el pago con otra tarjeta o verifique que los datos fueron ingresados correctamente.' d='Modules.Niubiz.Shop'}</p>
     {else}
-        <p>{l s='Para procesar el pago por favor haga click en el siguiente boton y complete los datos de su tarjeta.' d='Modules.Niubiz.Validation'}</p>
+        <p>{l s='Para procesar el pago por favor haga click en el siguiente boton y complete los datos de su tarjeta.' d='Modules.Niubiz.Shop'}</p>
     {/if}
     <br>
     <div class="row">
@@ -59,7 +59,7 @@
 </div>
 
 <br></br>
-<a class="fl" href="{$link->getPageLink('order', true, null, 'step=3')}"> <i class="fto-left fto_mar_lr2"></i>{l s='Cambiar metodo de pago' d='Modules.Niubiz.Validation'}</a>
+<a class="fl" href="{$link->getPageLink('order', true, null, 'step=3')}"> <i class="fto-left fto_mar_lr2"></i>{l s='Cambiar metodo de pago' d='Modules.Niubiz.Shop'}</a>
 
   <script> 
   window.onload=openNiubiz;
@@ -89,13 +89,6 @@
     }
   </script>
   
-
-{if $nbz_debug}
-  <br>
-  <pre style="background: #eeeeee;">
-  {$nbz_dump|escape:'html':'UTF-8'}
-  </pre>
-{/if}
 
 <br></br>
 {/block}

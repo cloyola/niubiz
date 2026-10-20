@@ -28,7 +28,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         if ((Tools::isSubmit('nbzheader') == false)) {
-            $message = 'Error en modulo de pago: Algo ha fallado, intente nuevamente';
+            $message = $this->module->getTranslator()->trans('Error en modulo de pago: Algo ha fallado, intente nuevamente', [], 'Modules.Niubiz.Shop');
             Tools::redirect(Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['nbz_error' => base64_encode($message)]));
         }
         
@@ -73,7 +73,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
         }
 
         if (!$authorized) {
-            die($this->module->trans('This payment method is not available.', [], 'Modules.Niubiz.Return'));
+            die($this->module->getTranslator()->trans('This payment method is not available.', [], 'Modules.Niubiz.Shop'));
         }
 
         if (!Validate::isLoadedObject($customer)) {
@@ -84,7 +84,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
         // NIUBIZ VALIDATION
         $cookieName = 'niubizkey-'.(int) $cart->id;
         if (empty($_COOKIE[$cookieName])) {
-            $message = 'Error en modulo de pago: la sesión de pago expiró, intente nuevamente';
+            $message = $this->module->getTranslator()->trans('Error en modulo de pago: la sesión de pago expiró, intente nuevamente', [], 'Modules.Niubiz.Shop');
             Tools::redirect($this->context->link->getModuleLink($this->module->name, 'validation', ['nbz_error' => base64_encode($message)]));
         }
 
@@ -105,8 +105,8 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
             $message = "Pago válido";
         } else {
             $errorCode = isset($authNiubizResponse['errorCode']) ? $authNiubizResponse['errorCode'] : '';
-            $errorMessage = isset($authNiubizResponse['errorMessage']) ? $authNiubizResponse['errorMessage'] : 'Sin respuesta de Niubiz';
-            $message = 'Error '.$errorCode.': '.$errorMessage;
+            $errorMessage = isset($authNiubizResponse['errorMessage']) ? $authNiubizResponse['errorMessage'] : $this->module->getTranslator()->trans('Sin respuesta de Niubiz', [], 'Modules.Niubiz.Shop');
+            $message = $this->module->getTranslator()->trans('Error %code%: %message%', ['%code%' => $errorCode, '%message%' => $errorMessage], 'Modules.Niubiz.Shop');
             Tools::redirect(Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['nbz_error' => base64_encode($message)]));
         } 
 
@@ -159,7 +159,7 @@ class NiubizReturnModuleFrontController extends ModuleFrontController
             }
             
         } else {
-            $this->errors[] = $this->module->trans('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Return');
+            $this->context->smarty->assign('nbz_errors', [$this->module->getTranslator()->trans('An error occured. Please contact the merchant to have more informations', [], 'Modules.Niubiz.Shop')]);
 
             $this->setTemplate('module:niubiz/views/templates/front/error.tpl');
         }
