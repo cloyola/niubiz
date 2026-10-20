@@ -972,7 +972,7 @@ class Niubiz extends PaymentModule
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($key === false || $key === '' || $httpCode !== 200 || stripos((string) $key, 'unauthorized') !== false) {
+        if ($key === false || $key === '' || $httpCode < 200 || $httpCode >= 300 || stripos((string) $key, 'unauthorized') !== false) {
             $this->lastError = 'API de seguridad ('.$this->security_api.'): HTTP '.$httpCode
                 .($errno ? ', cURL #'.$errno.' '.$error : '')
                 .($key ? ', respuesta: '.Tools::substr(strip_tags((string) $key), 0, 200) : '');
