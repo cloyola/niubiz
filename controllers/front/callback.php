@@ -34,8 +34,8 @@ class NiubizCallbackModuleFrontController extends ModuleFrontController
 
         // Debugger switch (module configuration): keep the raw notification in the PrestaShop log (Advanced Parameters > Logs),
         // never in a file inside the web root and never printed to the page.
-        if ((bool) Configuration::get('NBZ_DEBUG') && $input !== '') {
-            PrestaShopLogger::addLog('NIUBIZ callback: '.Tools::substr($input, 0, 2000), 1);
+        if ((bool) Configuration::get('NBZ_DEBUG') && is_string($input) && $input !== '') {
+            PrestaShopLogger::addLog('NIUBIZ callback: '.$this->module->clip($input, 2000), 1);
         }
 
         if ($input === '') {

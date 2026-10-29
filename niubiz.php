@@ -94,15 +94,15 @@ class Niubiz extends PaymentModule
 
         switch ($currency->iso_code) {
             case 'PEN':
-                $this->merchantid = Configuration::get('NBZ_MERCHANTID_PEN');
-                $this->vsauser = Configuration::get('NBZ_USER_PEN');
-                $this->vsapassword = Configuration::get('NBZ_PASSWORD_PEN');
+                $this->merchantid = (string) Configuration::get('NBZ_MERCHANTID_PEN');
+                $this->vsauser = (string) Configuration::get('NBZ_USER_PEN');
+                $this->vsapassword = (string) Configuration::get('NBZ_PASSWORD_PEN');
                 break;
 
             case 'USD':
-                $this->merchantid = Configuration::get('NBZ_MERCHANTID_USD');
-                $this->vsauser = Configuration::get('NBZ_USER_USD');
-                $this->vsapassword = Configuration::get('NBZ_PASSWORD_USD');
+                $this->merchantid = (string) Configuration::get('NBZ_MERCHANTID_USD');
+                $this->vsauser = (string) Configuration::get('NBZ_USER_USD');
+                $this->vsapassword = (string) Configuration::get('NBZ_PASSWORD_USD');
                 break;
 
             default:
@@ -151,16 +151,51 @@ class Niubiz extends PaymentModule
     }
 
     /**
-     * Format a price on every supported PrestaShop version (Tools::displayPrice was removed in 9).
+     * Format a price on PrestaShop 1.7.6 through 9.
+     * 1.7.6 throws if the currency has no CLDR price spec (PEN on many shops); fall back to Tools::displayPrice.
+     * PrestaShop 9 removed Tools::displayPrice.
      */
     public function formatPrice($amount, $currency = null)
     {
-        $currency = $currency ? $currency : $this->context->currency;
-        if (method_exists($this->context, 'getCurrentLocale') && $this->context->getCurrentLocale()) {
-            return $this->context->getCurrentLocale()->formatPrice($amount, $currency->iso_code);
+        if (!$currency) {
+            $currency = $this->context->currency;
+        }
+        $iso = (is_object($currency) && isset($currency->iso_code)) ? (string) $currency->iso_code : '';
+
+        if ($iso !== '' && method_exists($this->context, 'getCurrentLocale') && $this->context->getCurrentLocale()) {
+            $locale = $this->context->getCurrentLocale();
+            if (method_exists($locale, 'formatPrice')) {
+                try {
+                    return $locale->formatPrice($amount, $iso);
+                } catch (Exception $e) {
+                    // PrestaShop 1.7.6 LocalizationException: price spec missing for this currency.
+                }
+            }
         }
 
-        return Tools::displayPrice($amount, $currency, false);
+        if (method_exists('Tools', 'displayPrice')) {
+            return Tools::displayPrice($amount, $currency, false);
+        }
+
+        return ($iso !== '' ? $iso.' ' : '').$amount;
+    }
+
+    /**
+     * UTF-8 cut. Tools::substr() on shops that still have it (1.7 through 9.0);
+     * mb_substr/substr where that helper was removed.
+     */
+    public function clip($text, $length)
+    {
+        $text = (string) $text;
+        $length = (int) $length;
+        if (method_exists('Tools', 'substr')) {
+            return Tools::substr($text, 0, $length);
+        }
+        if (function_exists('mb_substr')) {
+            return mb_substr($text, 0, $length, 'UTF-8');
+        }
+
+        return substr($text, 0, $length);
     }
 
     public function install()
@@ -567,11 +602,11 @@ class Niubiz extends PaymentModule
         $fields['NBZ_DEBUG'] = Tools::getValue('NBZ_DEBUG', Configuration::get('NBZ_DEBUG'));
         $fields['NBZ_LOGO'] = Tools::getValue('NBZ_LOGO', Configuration::get('NBZ_LOGO'));
         $fields['NBZ_ENVIROMENT'] = Tools::getValue('NBZ_ENVIROMENT', Configuration::get('NBZ_ENVIROMENT'));
-        $fields['NBZ_MERCHANTID_PEN'] = Tools::getValue('NBZ_MERCHANTID_PEN', trim(Configuration::get('NBZ_MERCHANTID_PEN')));
-        $fields['NBZ_USER_PEN'] = Tools::getValue('NBZ_USER_PEN', trim(Configuration::get('NBZ_USER_PEN')));
-        $fields['NBZ_PASSWORD_PEN'] = Tools::getValue('NBZ_PASSWORD_PEN', trim(Configuration::get('NBZ_PASSWORD_PEN')));
-        $fields['NBZ_MERCHANTID_USD'] = Tools::getValue('NBZ_MERCHANTID_USD', trim(Configuration::get('NBZ_MERCHANTID_USD')));
-        $fields['NBZ_USER_USD'] = Tools::getValue('NBZ_USER_USD', trim(Configuration::get('NBZ_USER_USD')));
+        $fields['NBZ_MERCHANTID_PEN'] = Tools::getValue('NBZ_MERCHANTID_PEN', trim((string) Configuration::get('NBZ_MERCHANTID_PEN')));
+        $fields['NBZ_USER_PEN'] = Tools::getValue('NBZ_USER_PEN', trim((string) Configuration::get('NBZ_USER_PEN')));
+        $fields['NBZ_PASSWORD_PEN'] = Tools::getValue('NBZ_PASSWORD_PEN', trim((string) Configuration::get('NBZ_PASSWORD_PEN')));
+        $fields['NBZ_MERCHANTID_USD'] = Tools::getValue('NBZ_MERCHANTID_USD', trim((string) Configuration::get('NBZ_MERCHANTID_USD')));
+        $fields['NBZ_USER_USD'] = Tools::getValue('NBZ_USER_USD', trim((string) Configuration::get('NBZ_USER_USD')));
         $fields['NBZ_PASSWORD_USD'] = Tools::getValue('NBZ_PASSWORD_USD', Configuration::get('NBZ_PASSWORD_USD'));
         $fields['NBZ_PEN'] = Tools::getValue('NBZ_PEN', Configuration::get('NBZ_PEN'));
         $fields['NBZ_USD'] = Tools::getValue('NBZ_USD', Configuration::get('NBZ_USD'));
@@ -974,7 +1009,7 @@ class Niubiz extends PaymentModule
         if ($key === false || $key === '' || $httpCode < 200 || $httpCode >= 300 || stripos((string) $key, 'unauthorized') !== false) {
             $this->lastError = 'API de seguridad ('.$this->security_api.'): HTTP '.$httpCode
                 .($errno ? ', cURL #'.$errno.' '.$error : '')
-                .($key ? ', respuesta: '.Tools::substr(strip_tags((string) $key), 0, 200) : '');
+                .($key ? ', respuesta: '.$this->clip(strip_tags((string) $key), 200) : '');
             PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
@@ -1023,7 +1058,7 @@ class Niubiz extends PaymentModule
         if (!isset($json->sessionKey)) {
             $this->lastError = 'API de sesión ('.$this->session_api.'): HTTP '.$httpCode
                 .($errno ? ', cURL #'.$errno.' '.$error : '')
-                .($response ? ', respuesta: '.Tools::substr(strip_tags((string) $response), 0, 300) : '');
+                .($response ? ', respuesta: '.$this->clip(strip_tags((string) $response), 300) : '');
             PrestaShopLogger::addLog('NIUBIZ :: '.$this->lastError, 3);
             return false;
         }
